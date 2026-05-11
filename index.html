@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="Deformable Neural Radiance Fields creates free-viewpoint portraits (nerfies) from casually captured videos.">
+  <meta name="keywords" content="Nerfies, D-NeRF, NeRF">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nerfies: Deformable Neural Radiance Fields</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/favicon.svg">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    .video-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .video-item {
+        text-align: center;
+    }
+    .video1 {
+        width: 48%; /* Set specific width for the first video */
+    }
+    .video2 {
+        width: 48%; /* Set specific width for the second video */
+    }
+    video {
+        width: 100%; /* Ensure the video fits within the item container */
+        height: auto; /* Maintain aspect ratio */
+    }
+    .qoed-explainer {
+      margin-top: 1.25rem;
+      padding: 1.25rem 1.35rem;
+      border: 1px solid #e6edf3;
+      border-radius: 18px;
+      background: #fbfcfd;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    }
+    .qoed-explainer p {
+      margin-bottom: 0.85rem;
+    }
+    .qoed-equation {
+      font-family: Castoro, "Times New Roman", serif;
+      font-size: 1.15rem;
+      line-height: 1.55;
+      text-align: center;
+      padding: 0.85rem 1rem;
+      margin: 0.9rem 0;
+      border-radius: 14px;
+      background: #f8fafc;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .qoed-equation mjx-container[jax="CHTML"][display="true"] {
+      margin: 0;
+    }
+    .qoed-steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.85rem;
+      margin: 1rem 0;
+    }
+    .qoed-step {
+      padding: 0.85rem;
+      border-radius: 14px;
+      background: white;
+      border: 1px solid #e6edf3;
+      text-align: left;
+    }
+    .qoed-step-title {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .blue-text {
+      color: #0b6f8f;
+      font-weight: 700;
+    }
+    .orange-text {
+      color: #c56a00;
+      font-weight: 700;
+    }
+    .green-text {
+      color: #087f5b;
+      font-weight: 700;
+    }
+    .kbar {
+      text-decoration: overline;
+      text-decoration-thickness: 1px;
+    }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      line-height: 1.05;
+      font-size: 0.9em;
+      margin: 0 0.15rem;
+    }
+    .frac .top {
+      border-bottom: 1px solid currentColor;
+      padding: 0 0.2rem;
+    }
+    .frac .bottom {
+      padding: 0 0.2rem;
+    }
+    .qoed-note {
+      color: #64748b;
+      font-size: 0.96rem;
+    }
+    .qoed-view-tabs {
+      margin: 1rem 0 1.5rem;
+    }
+    .qoed-view-tabs.tabs.is-toggle li.is-active a {
+      background-color: #0F4BEA;
+      border-color: #0F4BEA;
+      color: #ffffff;
+    }
+    .qoed-panel {
+      display: none;
+    }
+    .qoed-panel.is-active {
+      display: block;
+    }
+    @media screen and (max-width: 768px) {
+      .qoed-steps {
+        grid-template-columns: 1fr;
+      }
+      .qoed-equation {
+        font-size: 1rem;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Learning What Matters:
+          </h1>
+          <h3 class="title is-3 publication-title">Adaptive Information Theoretic Objectives for Robot Exploration
+          </h3>
+          <img src="./static/images/demo.png" alt="RVIZ" style="width: 100%; height: auto; margin-bottom: 0px;">
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="http://youwei-yu.com" target="_blank">Youwei Yu</a><sup>1</sup>&nbsp;&nbsp;
+              <a href="https://shanemankiw.github.io" target="_blank">Jionghao Wang</a><sup>2</sup>&nbsp;&nbsp;
+              <a href="https://yzmblog.github.io/" target="_blank">Zhengming Yu</a><sup>2</sup>&nbsp;&nbsp;
+              <a href="https://engineering.tamu.edu/cse/profiles/Wang-Wenping.html" target="_blank">Wenping Wang</a><sup>2</sup>&nbsp;&nbsp;
+              <a href="https://vail-robotics.net/pages/lantaoliu" target="_blank">Lantao Liu</a><sup>1</sup>
+            </span>
+          </div>
+          <div class="is-size-5 publication-authors publication-affiliations">
+            <span class="author-block"><sup>1</sup>Indiana University</span>
+            <span class="author-block">&nbsp;&nbsp;<sup>2</sup>Texas A&amp;M University</span>
+          </div>
+          <h3 class="title is-4 publication-conference">
+            <a href="https://roboticsconference.org/" target="_blank">
+              <span>RSS 2026</span>
+            </a>
+          </h3>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="https://openreview.net/"
+                    class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <!-- Youtube Link. -->
+              <span class="link-block">
+                <a href="https://youtu.be/NeZHb02zChQ?si=bPPmujnzbwvbkhFp"
+                    class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Youtube</span>
+                </a>
+              </span>
+              <!-- BiliBili Link. -->
+              <span class="link-block">
+                <a href="https://www.bilibili.com/video/BV1Wm5P6oE9t"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-bilibili"></i>
+                  </span>
+                  <span>Bilibili</span>
+                </a>
+              </span>
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/"
+                    class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h4 class="title is-4">Can we really improve policy from information gains?</h4>
+        <div class="tabs is-toggle is-centered qoed-view-tabs">
+          <ul>
+            <li class="is-active">
+              <a href="#qoed-panel-abstract" data-qoed-tab="abstract">Abstract</a>
+            </li>
+            <li>
+              <a href="#qoed-panel-visualization" data-qoed-tab="visualization">A vivid visualization</a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="qoed-panel is-active" id="qoed-panel-abstract">
+          <div class="content has-text-justified">
+            <p><strong>Problem:</strong> information-theoretic exploration objectives in robotics are hard to design because many model parameters are weakly observable or unidentifiable, causing standard objectives to overestimate what exploration data can actually teach the system.</p>
+            <p><strong>Method:</strong> QOED (Quasi-Optimal Experimental Design) analyzes the Fisher information matrix to identify learnable parameter directions, then adapts the exploration objective to prioritize those identifiable directions while suppressing nuisance effects from unidentifiable parameters.</p>
+            <p><strong>Result:</strong> QOED provides a theoretically grounded approximation to ideal information-maximizing exploration and improves both exploration efficiency and downstream policy learning, achieving up to 35.23% gains from identifiable-direction selection and 21.98% gains from nuisance suppression across simulated and real-world robotics tasks.</p>
+          </div>
+        </div>
+
+        <div class="qoed-panel" id="qoed-panel-visualization">
+          <figure class="method-figure">
+            <h4 class="title is-4">A vivid visualization</h4>
+            <img src="./static/images/method.png" alt="A vivid visualization of the QOED method.">
+          </figure>
+          <div class="qoed-explainer">
+            <p>
+              We start from the standard information-gain view of robot exploration:
+              choose a policy that collects data most informative about the hidden parameters.
+            </p>
+            <div class="qoed-equation">
+              \[
+              \pi^\star = \operatorname*{arg\,max}_{\pi}
+              \mathbb{E}\left[\operatorname{Info\text{-}Gain}(\text{data}\mid \text{model}, \pi)\right].
+              \]
+            </div>
+            <p>
+              BOED approximates this objective using the Fisher information matrix. For a trajectory
+              \(\tau\) and parameters \(\phi\), the score
+              \(g = \nabla_{\phi} \log p(\tau \mid \phi, \pi)\) measures how sensitive the observed data is to parameter changes.
+            </p>
+            <div class="qoed-equation">
+              \[
+              \mathcal{B}_{\mathrm{BOED}}(\pi) = \operatorname{tr}(F_{\phi}^{\pi}),
+              \qquad
+              F_{\phi}^{\pi} = \mathbb{E}[g g^\top].
+              \]
+            </div>
+            <div class="qoed-steps">
+              <div class="qoed-step">
+                <span class="qoed-step-title blue-text">Vanilla BOED</span>
+                maximizes information over all parameters. This can waste exploration on weakly observable
+                or unidentifiable directions.
+              </div>
+              <div class="qoed-step">
+                <span class="qoed-step-title orange-text">Agnostic QOED</span>
+                keeps only the selected critical parameters \(k\), but treats the discarded parameters
+                \(\bar{k}\) as irrelevant.
+              </div>
+              <div class="qoed-step">
+                <span class="qoed-step-title green-text">QOED</span>
+                keeps the critical information that remains after removing the part predictable from
+                nuisance parameters.
+              </div>
+            </div>
+            <div class="qoed-equation">
+              \[
+              \mathcal{B}_{\mathrm{Agnostic}}(\pi) =
+              \operatorname{tr}(F_{kk}^{\pi})
+              \]
+            </div>
+            <div class="qoed-equation">
+              \[
+              \mathcal{B}_{\mathrm{QOED}}(\pi) =
+              \operatorname{tr}\left(
+              F_{kk}^{\pi}
+              -
+              F_{k\bar{k}}^{\pi}
+              (F_{\bar{k}\bar{k}}^{\pi})^{-1}
+              F_{\bar{k}k}^{\pi}
+              \right).
+              \]
+            </div>
+            <p>
+              Intuitively, the orange term is the <span class="orange-text">nuisance shadow</span>:
+              information in the critical block that can be explained by nuisance directions.
+              QOED subtracts this shadow and optimizes the remaining
+              <span class="green-text">conditional information</span>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!--/ Abstract. -->
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <h4 class="title is-4">Model-Based Policy Optimization Simulations</h4>
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">GO1 FLAT</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/go1-flat.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">GO1 ROUGH</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/go1-rough.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">G1 FLAT</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/g1-flat.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="title is-4">Model-Based Policy Optimization Experiments</h4>
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">FRANKA</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/franka.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">FOREST</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/forest.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">HIGHBAY</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/highbay.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="content">
+          <h6 class="title is-6">MESH</h6>
+          <video autoplay controls muted loop playsinline height="100%">
+            <source src="./static/videos/mesh.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Animation. -->
+    <!--/ Animation. -->
+
+  </div>
+</section>
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@inproceedings{
+    yuRSS26qoed,
+    title={Learning What Matters: Adaptive Information Theoretic Objectives for Robot Exploration},
+    author={Youwei Yu and Jionghao Wang and Zhengming Yu and Wenping Wang and Lantao Liu},
+    booktitle={Proceedings of Robotics: Science and Systems},
+    year={2026}
+}</code></pre>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <p>Page template borrowed from <a href="https://nerfies.github.io/"><span class="dnerf">Nerfies</span></a>.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var tabs = document.querySelectorAll('[data-qoed-tab]');
+    var panels = {
+      abstract: document.getElementById('qoed-panel-abstract'),
+      visualization: document.getElementById('qoed-panel-visualization')
+    };
+
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function(event) {
+        event.preventDefault();
+        var target = tab.getAttribute('data-qoed-tab');
+
+        tabs.forEach(function(item) {
+          item.parentElement.classList.toggle('is-active', item === tab);
+        });
+
+        Object.keys(panels).forEach(function(key) {
+          panels[key].classList.toggle('is-active', key === target);
+        });
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([panels[target]]);
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
